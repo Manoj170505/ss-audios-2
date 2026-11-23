@@ -1,0 +1,8 @@
+{
+  "name": "SS Audios",
+  "description": "Premium Audio, Live Entertainment, Raga Studio, and Sampoorna Music Academy by SS Audios — featuring a 70-slot live event video portfolio, interactive 3D stage designer, WhatsApp booking, and live Admin Portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-brand-black: #171717;
+  --color-brand-charcoal: #242424;
+  --color-brand-orange: #FF5A1F;
+  --color-brand-orange-hover: #E04810;
+  --color-brand-grey: #F3F3F3;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: #171717;
+    background-color: #ffffff;
+    scroll-behavior: smooth;
+  }
+
+  section[id] {
+    scroll-margin-top: 84px;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Clean minimal horizontal scrollbar for video portfolio rails */
+.portfolio-rail {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(23, 23, 23, 0.22) transparent;
+}
+.portfolio-rail::-webkit-scrollbar {
+  height: 6px;
+}
+.portfolio-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+.portfolio-rail::-webkit-scrollbar-thumb {
+  background-color: rgba(23, 23, 23, 0.18);
+  border-radius: 9999px;
+}
+.portfolio-rail::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 90, 31, 0.55);
+}
+
+/* Official Google Sign-In Material Button */
+.gsi-material-button {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  background-color: #ffffff;
+  border: 1px solid #d4d4d8;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #171717;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  height: 42px;
+  letter-spacing: 0.01em;
+  outline: none;
+  padding: 0 14px;
+  position: relative;
+  text-align: center;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  vertical-align: middle;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gsi-material-button:hover {
+  background-color: #f8f9fa;
+  border-color: #a1a1aa;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.gsi-material-button:focus-visible {
+  outline: 2px solid #FF5A1F;
+  outline-offset: 2px;
+}
+
+.gsi-material-button-content-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gsi-material-button-icon {
+  height: 18px;
+  width: 18px;
+  min-width: 18px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
