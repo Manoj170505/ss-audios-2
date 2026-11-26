@@ -3,6 +3,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  EyeOff,
   Film,
   Play,
   SlidersHorizontal,
@@ -54,10 +55,11 @@ export function DjPackagesSection({
   const activePackage =
     visiblePackages.find((p) => p.id === selectedPackageId) || visiblePackages[0];
 
-  // Guarantee 10 slots per package
-  const packageSlots: PortfolioSlot[] = activePackage
+  // Guarantee up to 10 slots per package and exclude slots marked hidden by admin
+  const allActivePackageSlots: PortfolioSlot[] = activePackage
     ? ensureDjPackageSlots(activePackage).slice(0, 10)
     : [];
+  const packageSlots: PortfolioSlot[] = allActivePackageSlots.filter((slot) => !slot.hidden);
 
   const activeModalSlot: PortfolioSlot | null =
     activeModalSlotIndex !== null ? packageSlots[activeModalSlotIndex] ?? null : null;
@@ -121,6 +123,7 @@ export function DjPackagesSection({
             const amount = getDjPackagePrice(pkg, currency);
             const isFeatured = Boolean(pkg.featured);
             const isSelected = pkg.id === activePackage?.id;
+            const visibleSlotsCount = ensureDjPackageSlots(pkg).filter((s) => !s.hidden).length;
 
             return (
               <article
@@ -207,7 +210,13 @@ export function DjPackagesSection({
 
                   <div className="text-center">
                     <span className="text-[11px] font-medium text-[#FF5A1F] opacity-90 group-hover/card:underline">
-                      {isSelected ? '↓ Viewing 10 Reels Below' : 'Click to View 10 Reels'}
+                      {isSelected
+                        ? visibleSlotsCount > 0
+                          ? `↓ Viewing ${visibleSlotsCount} ${visibleSlotsCount === 1 ? 'Reel' : 'Reels'} Below`
+                          : '↓ Reels Hidden'
+                        : visibleSlotsCount > 0
+                          ? `Click to View ${visibleSlotsCount} ${visibleSlotsCount === 1 ? 'Reel' : 'Reels'}`
+                          : 'Reels Hidden'}
                     </span>
                   </div>
                 </div>
@@ -227,7 +236,9 @@ export function DjPackagesSection({
                     {activePackage.name}
                   </h3>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F]">
-                    10 Showcase Videos
+                    {packageSlots.length > 0
+                      ? `${packageSlots.length} Showcase ${packageSlots.length === 1 ? 'Video' : 'Videos'}`
+                      : 'Reels Hidden'}
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-neutral-500">
@@ -237,140 +248,163 @@ export function DjPackagesSection({
               </div>
 
               {/* Carousel Controls */}
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              {packageSlots.length > 0 && (
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => scrollCarousel('left')}
+                    aria-label="Scroll left"
+                    className="w-10 h-10 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 flex items-center justify-center text-neutral-700 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollCarousel('right')}
+                    aria-label="Scroll right"
+                    className="w-10 h-10 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 flex items-center justify-center text-neutral-700 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Horizontal Portrait Video Carousel or Empty State */}
+            {packageSlots.length > 0 ? (
+              <div
+                ref={carouselRef}
+                data-testid={`dj-package-carousel-${activePackage.id}`}
+                className="flex gap-4 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory scroll-smooth no-scrollbar"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                {packageSlots.map((slot, index) => {
+                  const isPublished = slot.status === 'published' && Boolean(slot.videoUrl);
+                  const isHovered = hoveredSlotId === slot.id;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      data-testid={`dj-slot-card-${slot.id}`}
+                      onMouseEnter={() => setHoveredSlotId(slot.id)}
+                      onMouseLeave={() => setHoveredSlotId(null)}
+                      onClick={() => {
+                        if (isPublished) {
+                          setActiveModalSlotIndex(index);
+                        } else if (onOpenAdminForSlot) {
+                          onOpenAdminForSlot(slot.id);
+                        }
+                      }}
+                      className={`group relative shrink-0 snap-start w-[72vw] sm:w-[42vw] md:w-[28vw] lg:w-[22%] max-w-[280px] aspect-[9/14] sm:aspect-[9/15] rounded-3xl overflow-hidden border transition-all duration-300 cursor-pointer ${
+                        isPublished
+                          ? 'bg-[#121212] border-neutral-300 hover:border-[#FF5A1F] hover:-translate-y-1.5 hover:shadow-xl'
+                          : 'bg-[#d8d8d8] border-neutral-300 hover:border-neutral-400 hover:-translate-y-1'
+                      }`}
+                    >
+                      {isPublished && slot.videoUrl ? (
+                        <>
+                          {/* Video Element for hover preview */}
+                          <video
+                            src={resolveMediaUrl(slot.videoUrl) || slot.videoUrl}
+                            poster={
+                              resolveMediaUrl(slot.posterUrl) || slot.posterUrl || undefined
+                            }
+                            muted
+                            loop
+                            playsInline
+                            preload="metadata"
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            ref={(el) => {
+                              if (!el) return;
+                              if (isHovered) {
+                                void el.play().catch(() => {});
+                              } else {
+                                el.pause();
+                              }
+                            }}
+                          />
+
+                          {/* Top Badge: Archive Tag & Index */}
+                          <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 via-black/30 to-transparent p-3.5 flex items-center justify-between text-[11px] font-medium text-white/90">
+                            <span className="truncate bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded font-mono">
+                              {slot.archiveTag}
+                            </span>
+                            <span className="font-mono text-white/70">
+                              {String(index + 1).padStart(2, '0')}/{packageSlots.length}
+                            </span>
+                          </div>
+
+                          {/* Central Play Button Overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-lg transition-transform duration-200 group-hover:scale-110 group-hover:bg-[#FF5A1F]">
+                              <Play className="w-6 h-6 fill-current ml-0.5" />
+                            </div>
+                          </div>
+
+                          {/* Bottom Title & Details */}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-4 text-white">
+                            <p className="font-display text-sm font-bold line-clamp-1">
+                              {slot.title}
+                            </p>
+                            <p className="text-[11px] text-neutral-300 flex items-center gap-1 mt-0.5">
+                              <Volume2 className="w-3 h-3 text-[#FF5A1F]" />
+                              {activePackage.name} Reel
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        /* Awaiting Video Card (Exact match to the portrait placeholder design) */
+                        <div className="w-full h-full flex flex-col justify-between p-4 bg-gradient-to-b from-[#e3e3e3] to-[#cfcfcf]">
+                          {/* Top Header */}
+                          <div className="flex items-center justify-between text-[11px] font-mono text-neutral-600">
+                            <span className="font-semibold">{slot.archiveTag}</span>
+                            <span>{String(index + 1).padStart(2, '0')}/{packageSlots.length}</span>
+                          </div>
+
+                          {/* Center Icon (Black Ring & Play Icon) */}
+                          <div className="flex flex-col items-center justify-center my-auto">
+                            <div className="w-14 h-14 rounded-full border-2 border-neutral-800 flex items-center justify-center text-neutral-800 transition-transform duration-200 group-hover:scale-110 shadow-sm bg-white/40">
+                              <Play className="w-6 h-6 fill-neutral-800 ml-0.5" />
+                            </div>
+                          </div>
+
+                          {/* Bottom Tag / Action */}
+                          <div className="text-center pt-2">
+                            <p className="text-xs font-semibold text-neutral-700 truncate">
+                              {slot.title}
+                            </p>
+                            {onOpenAdminForSlot && (
+                              <span className="mt-1 inline-block text-[11px] font-semibold text-[#FF5A1F] opacity-0 group-hover:opacity-100 transition-opacity">
+                                + Upload Video
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-12 px-6 rounded-2xl bg-[#F9F9F9] border border-dashed border-neutral-300 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-500 mb-3">
+                  <EyeOff className="w-6 h-6" />
+                </div>
+                <p className="font-display text-base font-bold text-[#171717]">
+                  No public reels currently visible for {activePackage.name}
+                </p>
+                <p className="text-xs text-neutral-500 mt-1 max-w-md">
+                  All showcase videos for this package are currently set to hidden. You can unhide or upload new footage from the Admin Portal.
+                </p>
                 <button
                   type="button"
-                  onClick={() => scrollCarousel('left')}
-                  aria-label="Scroll left"
-                  className="w-10 h-10 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 flex items-center justify-center text-neutral-700 transition-colors shadow-sm cursor-pointer"
+                  onClick={onOpenAdminPricing}
+                  className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#171717] hover:bg-[#FF5A1F] rounded-lg transition-colors cursor-pointer"
                 >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollCarousel('right')}
-                  aria-label="Scroll right"
-                  className="w-10 h-10 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 flex items-center justify-center text-neutral-700 transition-colors shadow-sm cursor-pointer"
-                >
-                  <ChevronRight className="w-5 h-5" />
+                  Manage Package Reels
                 </button>
               </div>
-            </div>
-
-            {/* Horizontal Portrait Video Carousel */}
-            <div
-              ref={carouselRef}
-              data-testid={`dj-package-carousel-${activePackage.id}`}
-              className="flex gap-4 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory scroll-smooth no-scrollbar"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {packageSlots.map((slot, index) => {
-                const isPublished = slot.status === 'published' && Boolean(slot.videoUrl);
-                const isHovered = hoveredSlotId === slot.id;
-
-                return (
-                  <div
-                    key={slot.id}
-                    data-testid={`dj-slot-card-${slot.id}`}
-                    onMouseEnter={() => setHoveredSlotId(slot.id)}
-                    onMouseLeave={() => setHoveredSlotId(null)}
-                    onClick={() => {
-                      if (isPublished) {
-                        setActiveModalSlotIndex(index);
-                      } else if (onOpenAdminForSlot) {
-                        onOpenAdminForSlot(slot.id);
-                      }
-                    }}
-                    className={`group relative shrink-0 snap-start w-[72vw] sm:w-[42vw] md:w-[28vw] lg:w-[22%] max-w-[280px] aspect-[9/14] sm:aspect-[9/15] rounded-3xl overflow-hidden border transition-all duration-300 cursor-pointer ${
-                      isPublished
-                        ? 'bg-[#121212] border-neutral-300 hover:border-[#FF5A1F] hover:-translate-y-1.5 hover:shadow-xl'
-                        : 'bg-[#d8d8d8] border-neutral-300 hover:border-neutral-400 hover:-translate-y-1'
-                    }`}
-                  >
-                    {isPublished && slot.videoUrl ? (
-                      <>
-                        {/* Video Element for hover preview */}
-                        <video
-                          src={resolveMediaUrl(slot.videoUrl) || slot.videoUrl}
-                          poster={
-                            resolveMediaUrl(slot.posterUrl) || slot.posterUrl || undefined
-                          }
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          ref={(el) => {
-                            if (!el) return;
-                            if (isHovered) {
-                              void el.play().catch(() => {});
-                            } else {
-                              el.pause();
-                            }
-                          }}
-                        />
-
-                        {/* Top Badge: Archive Tag & Index */}
-                        <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 via-black/30 to-transparent p-3.5 flex items-center justify-between text-[11px] font-medium text-white/90">
-                          <span className="truncate bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded font-mono">
-                            {slot.archiveTag}
-                          </span>
-                          <span className="font-mono text-white/70">
-                            {String(index + 1).padStart(2, '0')}/10
-                          </span>
-                        </div>
-
-                        {/* Central Play Button Overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <div className="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white flex items-center justify-center shadow-lg transition-transform duration-200 group-hover:scale-110 group-hover:bg-[#FF5A1F]">
-                            <Play className="w-6 h-6 fill-current ml-0.5" />
-                          </div>
-                        </div>
-
-                        {/* Bottom Title & Details */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-4 text-white">
-                          <p className="font-display text-sm font-bold line-clamp-1">
-                            {slot.title}
-                          </p>
-                          <p className="text-[11px] text-neutral-300 flex items-center gap-1 mt-0.5">
-                            <Volume2 className="w-3 h-3 text-[#FF5A1F]" />
-                            {activePackage.name} Reel
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      /* Awaiting Video Card (Exact match to the portrait placeholder design) */
-                      <div className="w-full h-full flex flex-col justify-between p-4 bg-gradient-to-b from-[#e3e3e3] to-[#cfcfcf]">
-                        {/* Top Header */}
-                        <div className="flex items-center justify-between text-[11px] font-mono text-neutral-600">
-                          <span className="font-semibold">{slot.archiveTag}</span>
-                          <span>{String(index + 1).padStart(2, '0')}/10</span>
-                        </div>
-
-                        {/* Center Icon (Black Ring & Play Icon) */}
-                        <div className="flex flex-col items-center justify-center my-auto">
-                          <div className="w-14 h-14 rounded-full border-2 border-neutral-800 flex items-center justify-center text-neutral-800 transition-transform duration-200 group-hover:scale-110 shadow-sm bg-white/40">
-                            <Play className="w-6 h-6 fill-neutral-800 ml-0.5" />
-                          </div>
-                        </div>
-
-                        {/* Bottom Tag / Action */}
-                        <div className="text-center pt-2">
-                          <p className="text-xs font-semibold text-neutral-700 truncate">
-                            {slot.title}
-                          </p>
-                          {onOpenAdminForSlot && (
-                            <span className="mt-1 inline-block text-[11px] font-semibold text-[#FF5A1F] opacity-0 group-hover:opacity-100 transition-opacity">
-                              + Upload Video
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            )}
           </div>
         )}
 

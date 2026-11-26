@@ -1,5 +1,10 @@
 import { Eye, EyeOff, FolderOpen } from 'lucide-react';
-import type { PortfolioCategory, SectionVisibility, SiteDataPayload } from '../lib/domain';
+import {
+  ensureDjPackageSlots,
+  type PortfolioCategory,
+  type SectionVisibility,
+  type SiteDataPayload,
+} from '../lib/domain';
 
 interface AdminVisibilityPanelProps {
   siteData: SiteDataPayload;
@@ -8,7 +13,7 @@ interface AdminVisibilityPanelProps {
   onTogglePortfolioCategory: (category: PortfolioCategory, nextHidden: boolean) => void;
   onBulkPortfolioCategory: (
     categoryId: string,
-    slotAction: 'hide-empty' | 'show-all',
+    slotAction: 'hide-empty' | 'show-all' | 'hide-all',
   ) => void;
   onJumpToCategory: (categoryId: string) => void;
 }
@@ -102,20 +107,30 @@ export function AdminVisibilityPanel({
         </div>
       </div>
 
-      {/* Category-Wise Video Portfolio Visibility Table */}
+      {/* Category-Wise Video Portfolio & DJ Packages Visibility Table */}
       <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
         <div className="px-5 py-4 border-b border-neutral-200">
           <h3 className="font-display text-base font-bold text-[#171717]">
-            Portfolio Categories — Category-Wise View &amp; Hide Controls
+            Video Galleries &amp; DJ Packages — Category-Wise View &amp; Hide Controls
           </h3>
           <p className="text-xs text-neutral-600 mt-0.5">
-            Control visibility for each of the 7 video galleries, hide empty &ldquo;Awaiting
+            Control visibility for all 7 video galleries and 5 DJ Event Package tiers, hide empty &ldquo;Awaiting
             footage&rdquo; slots in one click, or jump straight into a category to upload videos.
           </p>
         </div>
 
         <div className="divide-y divide-neutral-200">
-          {siteData.portfolioCategories.map((cat) => {
+          {[
+            ...siteData.portfolioCategories,
+            ...(siteData.djPackages || []).map((pkg) => ({
+              id: `dj-pack-${pkg.id}`,
+              name: `${pkg.name} DJ Package`,
+              description: `${pkg.powerRating} · ${pkg.durationLabel} · 10 Videos`,
+              coverImage: '',
+              slots: ensureDjPackageSlots(pkg),
+              hidden: Boolean(pkg.hidden),
+            })),
+          ].map((cat) => {
             const publishedCount = cat.slots.filter(
               (s) => s.status === 'published' && s.videoUrl,
             ).length;
@@ -167,6 +182,17 @@ export function AdminVisibilityPanel({
                       className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-300 hover:border-neutral-500 rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
                     >
                       Show All 10
+                    </button>
+                  )}
+
+                  {visibleCount > 0 && (
+                    <button
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => onBulkPortfolioCategory(cat.id, 'hide-all')}
+                      className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-300 hover:border-neutral-500 rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      Hide All
                     </button>
                   )}
 

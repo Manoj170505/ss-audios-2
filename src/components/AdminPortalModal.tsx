@@ -285,7 +285,7 @@ export function AdminPortalModal({
         setAuthStatus({ needsFirstRunClaim: false, hasEnvPasscode: false, ownerEmailHint: 'connectjawa@gmail.com' });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialTab, initialSlotId, allManagedCategories]);
+  }, [isOpen, initialTab, initialSlotId]);
 
   // Escape key closes modal when no confirm dialog is open (modal mode only)
   useEffect(() => {
@@ -718,10 +718,10 @@ export function AdminPortalModal({
     }
   };
 
-  // Bulk hide empty or show all slots inside a portfolio category
+  // Bulk hide empty or show/hide all slots inside a portfolio category
   const handleBulkCategorySlots = async (
     categoryId: string,
-    slotAction: 'hide-empty' | 'show-all',
+    slotAction: 'hide-empty' | 'show-all' | 'hide-all',
   ) => {
     if (!adminToken) return;
     setVisibilityBusyKey(`cat-${categoryId}`);
@@ -741,7 +741,9 @@ export function AdminPortalModal({
         'success',
         slotAction === 'hide-empty'
           ? 'Hidden all empty "Awaiting footage" slots in this category.'
-          : 'Restored visibility for all 10 slots in this category.',
+          : slotAction === 'hide-all'
+            ? 'Hidden all slots in this category from public view.'
+            : 'Restored visibility for all slots in this category.',
       );
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Bulk update failed.');
@@ -1450,6 +1452,17 @@ export function AdminPortalModal({
                           className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-[#F3F3F3] hover:bg-neutral-200 rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
                         >
                           Show All 10
+                        </button>
+                      )}
+
+                      {activeCategory.slots.some((s) => !s.hidden) && (
+                        <button
+                          type="button"
+                          disabled={visibilityBusyKey === `cat-${activeCategory.id}`}
+                          onClick={() => void handleBulkCategorySlots(activeCategory.id, 'hide-all')}
+                          className="px-2.5 py-1.5 text-xs font-medium text-neutral-700 bg-[#F3F3F3] hover:bg-neutral-200 rounded-lg transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                        >
+                          Hide All
                         </button>
                       )}
                     </div>
