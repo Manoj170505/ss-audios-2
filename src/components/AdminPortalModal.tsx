@@ -31,6 +31,7 @@ import {
   MAX_VIDEO_FILE_BYTES,
   STORAGE_QUOTA_BYTES,
   formatBytes,
+  ensureDjPackageSlots,
   type AcademyCourse,
   type CurrencyCode,
   type DjPackage,
@@ -242,13 +243,31 @@ export function AdminPortalModal({
     'Hello,\n\nThank you for booking with SS Audios (Erode, Tamil Nadu). Your event slot is confirmed. For immediate coordination, reach us on WhatsApp at +91 99653 68899.\n\nWarm regards,\nSS Audios Team\nwww.ssaudios.in',
   );
 
+  const allManagedCategories = useMemo<PortfolioCategory[]>(() => {
+    const list: PortfolioCategory[] = [...siteData.portfolioCategories];
+
+    if (Array.isArray(siteData.djPackages)) {
+      siteData.djPackages.forEach((pkg) => {
+        list.push({
+          id: `dj-pack-${pkg.id}`,
+          name: `${pkg.name} DJ Package`,
+          description: `${pkg.powerRating} · ${pkg.durationLabel} · 10 Videos`,
+          coverImage: '',
+          slots: ensureDjPackageSlots(pkg),
+          hidden: Boolean(pkg.hidden),
+        });
+      });
+    }
+    return list;
+  }, [siteData.portfolioCategories, siteData.djPackages]);
+
   // Initialize tab, highlighted slot, and auth status ONLY when modal opens or target props change
   useEffect(() => {
     if (!isOpen) return;
     setActiveTab(initialTab);
     setHighlightedSlotId(initialSlotId || null);
     if (initialSlotId) {
-      const cat = siteData.portfolioCategories.find((c) =>
+      const cat = allManagedCategories.find((c) =>
         c.slots.some((s) => s.id === initialSlotId),
       );
       if (cat) setSelectedCategoryId(cat.id);
@@ -266,7 +285,7 @@ export function AdminPortalModal({
         setAuthStatus({ needsFirstRunClaim: false, hasEnvPasscode: false, ownerEmailHint: 'connectjawa@gmail.com' });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialTab, initialSlotId]);
+  }, [isOpen, initialTab, initialSlotId, allManagedCategories]);
 
   // Escape key closes modal when no confirm dialog is open (modal mode only)
   useEffect(() => {
@@ -293,10 +312,10 @@ export function AdminPortalModal({
 
   const activeCategory = useMemo(() => {
     return (
-      siteData.portfolioCategories.find((c) => c.id === selectedCategoryId) ||
-      siteData.portfolioCategories[0]
+      allManagedCategories.find((c) => c.id === selectedCategoryId) ||
+      allManagedCategories[0]
     );
-  }, [siteData.portfolioCategories, selectedCategoryId]);
+  }, [allManagedCategories, selectedCategoryId]);
 
   const visibleSlots = useMemo(() => {
     if (!activeCategory) return [];
@@ -1299,8 +1318,8 @@ export function AdminPortalModal({
                         Resumable Chunked Video Hosting — Up to {formatBytes(MAX_VIDEO_FILE_BYTES)} per Video
                       </p>
                       <p className="text-xs text-neutral-600 mt-0.5">
-                        Total capacity: {formatBytes(STORAGE_QUOTA_BYTES)} across all 70 slots ({formatBytes(storageStats.remainingBytes)} remaining).
-                        Upload MP4, WebM, or MOV directly into any slot and it goes live immediately on the public portfolio.
+                        Total capacity: {formatBytes(STORAGE_QUOTA_BYTES)} across all {storageStats.totalSlots || 120} slots ({formatBytes(storageStats.remainingBytes)} remaining).
+                        Upload MP4, WebM, or MOV directly into any slot and it goes live immediately on the public website.
                       </p>
                     </div>
                     <input
@@ -1312,32 +1331,74 @@ export function AdminPortalModal({
                     />
                   </div>
 
-                  {/* Category-Wise Switcher with Hidden Status Indicator */}
-                  <div className="flex flex-wrap items-center gap-2">
-                    {siteData.portfolioCategories.map((cat) => {
-                      const pubCount = cat.slots.filter((s) => s.status === 'published' && s.videoUrl).length;
-                      const isCatHidden = Boolean(cat.hidden);
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          data-testid={`admin-cat-tab-${cat.id}`}
-                          onClick={() => setSelectedCategoryId(cat.id)}
-                          className={`inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                            selectedCategoryId === cat.id
-                              ? 'bg-[#FF5A1F] text-white'
-                              : isCatHidden
-                                ? 'bg-neutral-200 text-neutral-600 border border-neutral-300 hover:border-neutral-500'
-                                : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400'
-                          }`}
-                        >
-                          {isCatHidden && <EyeOff className="w-3.5 h-3.5 shrink-0" />}
-                          <span>
-                            {cat.name} ({pubCount}/10)
-                          </span>
-                        </button>
-                      );
-                    })}
+                  {/* Category & DJ Package Switcher */}
+                  <div className="space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+                        Portfolio Showcases (7 Categories · 70 Slots)
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {siteData.portfolioCategories.map((cat) => {
+                        const pubCount = cat.slots.filter((s) => s.status === 'published' && s.videoUrl).length;
+                        const isCatHidden = Boolean(cat.hidden);
+                        return (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            data-testid={`admin-cat-tab-${cat.id}`}
+                            onClick={() => setSelectedCategoryId(cat.id)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                              selectedCategoryId === cat.id
+                                ? 'bg-[#171717] text-white shadow-sm'
+                                : isCatHidden
+                                  ? 'bg-neutral-200 text-neutral-600 border border-neutral-300 hover:border-neutral-500'
+                                  : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400'
+                            }`}
+                          >
+                            {isCatHidden && <EyeOff className="w-3.5 h-3.5 shrink-0" />}
+                            <span>
+                              {cat.name} ({pubCount}/10)
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-neutral-200/60">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#FF5A1F]">
+                        DJ Event Packages (5 Packages · 10 Videos Each)
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(siteData.djPackages || []).map((pkg) => {
+                        const pkgSlots = ensureDjPackageSlots(pkg);
+                        const pubCount = pkgSlots.filter((s) => s.status === 'published' && s.videoUrl).length;
+                        const isPkgHidden = Boolean(pkg.hidden);
+                        const isSelected = selectedCategoryId === `dj-pack-${pkg.id}`;
+                        return (
+                          <button
+                            key={pkg.id}
+                            type="button"
+                            data-testid={`admin-dj-tab-${pkg.id}`}
+                            onClick={() => setSelectedCategoryId(`dj-pack-${pkg.id}`)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#FF5A1F] text-white shadow-sm'
+                                : isPkgHidden
+                                  ? 'bg-neutral-200 text-neutral-600 border border-neutral-300 hover:border-neutral-500'
+                                  : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400'
+                            }`}
+                          >
+                            {isPkgHidden && <EyeOff className="w-3.5 h-3.5 shrink-0" />}
+                            <Film className="w-3.5 h-3.5 shrink-0" />
+                            <span>
+                              {pkg.name} ({pubCount}/10)
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Active Category Controls Bar: Category Show/Hide, Bulk Empty Hide, & Slot Filter */}
@@ -1706,6 +1767,10 @@ export function AdminPortalModal({
                   onChangeAcademy={setAcademyDraft}
                   saving={savingPrices}
                   onSaveAll={() => void handleSaveAllCatalogPrices()}
+                  onManagePackageVideos={(pkgId) => {
+                    setSelectedCategoryId(`dj-pack-${pkgId}`);
+                    setActiveTab('portfolio');
+                  }}
                 />
               )}
 

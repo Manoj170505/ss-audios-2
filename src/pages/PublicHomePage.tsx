@@ -143,6 +143,7 @@ export function PublicHomePage({ siteData, onOpenAdmin }: PublicHomePageProps) {
             currency={siteData.currency}
             onBookPackage={handleBookDjPackage}
             onOpenAdminPricing={() => onOpenAdmin('pricing')}
+            onOpenAdminForSlot={(slotId) => onOpenAdmin('portfolio', slotId)}
           />
         )}
 

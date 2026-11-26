@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Check, Eye, EyeOff, Film, Loader2 } from 'lucide-react';
 import {
   formatPrice,
   getDjPackagePrice,
@@ -25,6 +25,7 @@ interface AdminCatalogPricingPanelProps {
   onChangeAcademy: (next: AcademyCourse[]) => void;
   saving: boolean;
   onSaveAll: () => void;
+  onManagePackageVideos?: (packageId: string) => void;
 }
 
 export function AdminCatalogPricingPanel({
@@ -40,6 +41,7 @@ export function AdminCatalogPricingPanel({
   onChangeAcademy,
   saving,
   onSaveAll,
+  onManagePackageVideos,
 }: AdminCatalogPricingPanelProps) {
   const [categoryKey, setCategoryKey] = useState<PricingCategoryKey>('dj');
 
@@ -255,6 +257,17 @@ export function AdminCatalogPricingPanel({
                     className="w-full px-3 py-2 text-xs rounded-lg border border-neutral-300 focus:outline-none focus:border-[#FF5A1F]"
                   />
                 </div>
+
+                {onManagePackageVideos && (
+                  <button
+                    type="button"
+                    onClick={() => onManagePackageVideos(pkg.id)}
+                    className="w-full py-2 px-3 text-xs font-semibold rounded-lg bg-[#171717] hover:bg-[#FF5A1F] text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Film className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                    Manage 10 Videos
+                  </button>
+                )}
               </div>
             );
           })}

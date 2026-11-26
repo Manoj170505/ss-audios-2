@@ -31,6 +31,7 @@ export interface DjPackage {
   featured?: boolean;
   features: string[];
   hidden?: boolean;
+  slots?: PortfolioSlot[];
 }
 
 export interface PortfolioSlot {
@@ -290,6 +291,84 @@ export const SIGNATURE_SERVICES: SignatureService[] = [
   },
 ];
 
+export function createDefaultDjPackageSlots(packageId: string, packageName: string): PortfolioSlot[] {
+  const prefix = packageId.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const tagPrefix = packageName.slice(0, 3).toUpperCase();
+  return Array.from({ length: 10 }, (_, i) => {
+    const num = i + 1;
+    const pad = String(num).padStart(2, '0');
+    return {
+      id: `dj-pack-${prefix}-slot-${pad}`,
+      categoryId: `dj-pack-${prefix}`,
+      slotNumber: num,
+      title: `${packageName} Performance ${pad}`,
+      archiveTag: `${tagPrefix}-${pad}`,
+      location: 'Erode & Tamil Nadu',
+      status: 'awaiting' as const,
+      videoUrl: null,
+      posterUrl: null,
+      driveFileId: null,
+      driveWebViewLink: null,
+      mimeType: null,
+      fileSizeBytes: 0,
+      updatedAt: null,
+      hidden: false,
+    };
+  });
+}
+
+export function ensureDjPackageSlots(pkg: DjPackage): PortfolioSlot[] {
+  if (!pkg.slots || !Array.isArray(pkg.slots) || pkg.slots.length === 0) {
+    pkg.slots = createDefaultDjPackageSlots(pkg.id, pkg.name);
+    return pkg.slots;
+  }
+  const prefix = pkg.id.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const tagPrefix = pkg.name.slice(0, 3).toUpperCase();
+  const slots: PortfolioSlot[] = [];
+  for (let i = 1; i <= 10; i++) {
+    const pad = String(i).padStart(2, '0');
+    const slotId = `dj-pack-${prefix}-slot-${pad}`;
+    const existing = pkg.slots.find((s) => s.id === slotId || s.slotNumber === i);
+    if (existing) {
+      slots.push({
+        ...existing,
+        id: existing.id || slotId,
+        categoryId: existing.categoryId || `dj-pack-${prefix}`,
+        slotNumber: existing.slotNumber || i,
+        title: existing.title || `${pkg.name} Performance ${pad}`,
+        archiveTag: existing.archiveTag || `${tagPrefix}-${pad}`,
+        location: existing.location || 'Erode & Tamil Nadu',
+        status: existing.status || ('awaiting' as const),
+        videoUrl: existing.videoUrl ?? null,
+        posterUrl: existing.posterUrl ?? null,
+        fileSizeBytes: existing.fileSizeBytes || 0,
+        updatedAt: existing.updatedAt ?? null,
+        hidden: Boolean(existing.hidden),
+      });
+    } else {
+      slots.push({
+        id: slotId,
+        categoryId: `dj-pack-${prefix}`,
+        slotNumber: i,
+        title: `${pkg.name} Performance ${pad}`,
+        archiveTag: `${tagPrefix}-${pad}`,
+        location: 'Erode & Tamil Nadu',
+        status: 'awaiting' as const,
+        videoUrl: null,
+        posterUrl: null,
+        driveFileId: null,
+        driveWebViewLink: null,
+        mimeType: null,
+        fileSizeBytes: 0,
+        updatedAt: null,
+        hidden: false,
+      });
+    }
+  }
+  pkg.slots = slots.slice(0, 10);
+  return pkg.slots;
+}
+
 export const DEFAULT_DJ_PACKAGES: DjPackage[] = [
   {
     id: 'starter',
@@ -309,6 +388,7 @@ export const DEFAULT_DJ_PACKAGES: DjPackage[] = [
       'Wireless Mic & MC Host',
       'Custom 3D Visual Projection',
     ],
+    slots: createDefaultDjPackageSlots('starter', 'Starter'),
   },
   {
     id: 'basic',
@@ -328,6 +408,7 @@ export const DEFAULT_DJ_PACKAGES: DjPackage[] = [
       'Wireless Mic & MC Host',
       'Custom 3D Visual Projection',
     ],
+    slots: createDefaultDjPackageSlots('basic', 'Basic'),
   },
   {
     id: 'standard',
@@ -348,6 +429,7 @@ export const DEFAULT_DJ_PACKAGES: DjPackage[] = [
       'Wireless Mic & MC Host',
       'Custom 3D Visual Projection',
     ],
+    slots: createDefaultDjPackageSlots('standard', 'Standard'),
   },
   {
     id: 'premium',
@@ -367,6 +449,7 @@ export const DEFAULT_DJ_PACKAGES: DjPackage[] = [
       'Dual Wireless Mics & Pro MC',
       'Custom 3D Visual Projection',
     ],
+    slots: createDefaultDjPackageSlots('premium', 'Premium'),
   },
   {
     id: 'elite',
@@ -386,6 +469,7 @@ export const DEFAULT_DJ_PACKAGES: DjPackage[] = [
       'Multi-Wireless System & Celebrity MC',
       'Custom 3D Video Mapping & LED Wall',
     ],
+    slots: createDefaultDjPackageSlots('elite', 'Elite'),
   },
 ];
 
@@ -752,6 +836,7 @@ export function computeStorageStats(
   categories: PortfolioCategory[],
   quotaBytes: number = STORAGE_QUOTA_BYTES,
   maxFileBytes: number = MAX_VIDEO_FILE_BYTES,
+  packages: DjPackage[] = [],
 ): StorageStats {
   let usedBytes = 0;
   let publishedCount = 0;
@@ -763,6 +848,18 @@ export function computeStorageStats(
       if (slot.status === 'published' && slot.videoUrl) {
         publishedCount += 1;
         usedBytes += Math.max(0, slot.fileSizeBytes || 0);
+      }
+    }
+  }
+
+  for (const pkg of packages) {
+    if (Array.isArray(pkg.slots)) {
+      for (const slot of pkg.slots) {
+        totalSlots += 1;
+        if (slot.status === 'published' && slot.videoUrl) {
+          publishedCount += 1;
+          usedBytes += Math.max(0, slot.fileSizeBytes || 0);
+        }
       }
     }
   }
